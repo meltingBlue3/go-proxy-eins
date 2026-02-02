@@ -5,7 +5,10 @@
     "password": "your-strong-password-here",
     "timeout": 30,
     "log_level": "info",
-    "obfuscate": true
+    "obfuscate": true,
+    "upstream_proxy": "",
+    "upstream_username": "",
+    "upstream_password": ""
   },
   
   "_comment2": "客户端配置示例",

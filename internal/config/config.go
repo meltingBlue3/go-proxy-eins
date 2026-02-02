@@ -15,6 +15,11 @@ type ServerConfig struct {
 	Timeout    int    `json:"timeout"`     // 秒
 	LogLevel   string `json:"log_level"`
 	Obfuscate  bool   `json:"obfuscate"`
+	
+	// 上游 SOCKS5 代理配置（可选）
+	UpstreamProxy    string `json:"upstream_proxy"`     // e.g., "proxy.example.com:1080"
+	UpstreamUsername string `json:"upstream_username"`  // SOCKS5 用户名（可选）
+	UpstreamPassword string `json:"upstream_password"`  // SOCKS5 密码（可选）
 }
 
 // LocalConfig 客户端配置
@@ -124,6 +129,11 @@ func loadConfigFromFile(path string, cfg interface{}) error {
 // GetTimeout 获取超时时间
 func (c *ServerConfig) GetTimeout() time.Duration {
 	return time.Duration(c.Timeout) * time.Second
+}
+
+// HasUpstreamProxy 检查是否配置了上游代理
+func (c *ServerConfig) HasUpstreamProxy() bool {
+	return c.UpstreamProxy != ""
 }
 
 // GetTimeout 获取超时时间
