@@ -1,0 +1,20 @@
+{
+  "_comment": "服务端配置示例",
+  "server_config": {
+    "port": 8081,
+    "password": "your-strong-password-here",
+    "timeout": 30,
+    "log_level": "info",
+    "obfuscate": true
+  },
+  
+  "_comment2": "客户端配置示例",
+  "local_config": {
+    "local_addr": "127.0.0.1:1080",
+    "server": "your-server.com:8081",
+    "password": "your-strong-password-here",
+    "timeout": 30,
+    "log_level": "info",
+    "obfuscate": true
+  }
+}

@@ -1,0 +1,32 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+server
+local
+
+# Test binary
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Config files with sensitive data
+*.config.json
+!*.example.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
