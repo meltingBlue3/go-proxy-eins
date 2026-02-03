@@ -24,12 +24,14 @@ type ServerConfig struct {
 
 // LocalConfig 客户端配置
 type LocalConfig struct {
-	LocalAddr  string `json:"local_addr"`
-	Server     string `json:"server"`
-	Password   string `json:"password"`
-	Timeout    int    `json:"timeout"`     // 秒
-	LogLevel   string `json:"log_level"`
-	Obfuscate  bool   `json:"obfuscate"`
+	LocalAddr     string `json:"local_addr"`
+	Server        string `json:"server"`
+	Password      string `json:"password"`
+	Timeout       int    `json:"timeout"`     // 秒
+	LogLevel      string `json:"log_level"`
+	Obfuscate     bool   `json:"obfuscate"`
+	HTTPProxyAddr string `json:"http_proxy_addr"` // HTTP 代理监听地址，如 "127.0.0.1:8080"
+	AutoProxy     bool   `json:"auto_proxy"`      // 是否自动设置系统代理
 }
 
 // LoadServerConfig 加载服务端配置
@@ -75,12 +77,14 @@ func LoadServerConfig() (*ServerConfig, error) {
 func LoadLocalConfig() (*LocalConfig, error) {
 	// 默认配置
 	cfg := &LocalConfig{
-		LocalAddr: "127.0.0.1:1080",
-		Server:    "",
-		Password:  "",
-		Timeout:   30,
-		LogLevel:  "info",
-		Obfuscate: false,
+		LocalAddr:     "127.0.0.1:1080",
+		Server:        "",
+		Password:      "",
+		Timeout:       30,
+		LogLevel:      "info",
+		Obfuscate:     false,
+		HTTPProxyAddr: "127.0.0.1:8080", // 默认 HTTP 代理端口
+		AutoProxy:     true,              // 默认启用自动代理
 	}
 
 	// 命令行参数
@@ -92,6 +96,8 @@ func LoadLocalConfig() (*LocalConfig, error) {
 	flag.IntVar(&cfg.Timeout, "t", cfg.Timeout, "连接超时（秒）")
 	flag.StringVar(&cfg.LogLevel, "l", cfg.LogLevel, "日志级别 (debug/info/warn/error)")
 	flag.BoolVar(&cfg.Obfuscate, "o", cfg.Obfuscate, "启用流量混淆")
+	flag.StringVar(&cfg.HTTPProxyAddr, "http", cfg.HTTPProxyAddr, "HTTP 代理监听地址")
+	flag.BoolVar(&cfg.AutoProxy, "auto-proxy", cfg.AutoProxy, "自动设置系统代理")
 	flag.Parse()
 
 	// 如果指定了配置文件，先加载文件配置
