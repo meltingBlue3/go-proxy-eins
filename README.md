@@ -11,6 +11,9 @@
 - **灵活配置**: 支持 JSON 配置文件和命令行参数
 - **日志控制**: 多级别日志输出 (debug/info/warn/error)
 - **超时管理**: 可配置的连接超时
+- **跨平台**: 支持 Windows 和 Linux（包括 x86_64 和 ARM64）
+- **HTTP 代理**: 支持 SOCKS5 和 HTTP 代理协议
+- **自动代理**: Windows 自动配置系统代理，Linux 支持 GNOME/KDE
 
 ## 架构
 
@@ -26,12 +29,25 @@
 
 ### 构建
 
+#### Windows
 ```bash
 # 构建服务端
 go build -o server.exe ./cmd/server
 
 # 构建客户端
 go build -o local.exe ./cmd/local
+```
+
+#### Linux
+```bash
+# 构建服务端
+GOOS=linux GOARCH=amd64 go build -o server-linux ./cmd/server
+
+# 构建客户端
+GOOS=linux GOARCH=amd64 go build -o local-linux ./cmd/local
+
+# 或 ARM64 架构
+GOOS=linux GOARCH=arm64 go build -o local-linux-arm64 ./cmd/local
 ```
 
 如果网络连接受限，无法下载依赖，可以手动添加到 `go.mod`:
@@ -88,33 +104,55 @@ go mod tidy
 
 **客户端参数**:
 - `-c`: 配置文件路径
-- `-b`: 本地监听地址 (默认: 127.0.0.1:1080)
+- `-b`: 本地 SOCKS5 监听地址 (默认: 127.0.0.1:1080)
+- `-http`: HTTP 代理监听地址 (默认: 127.0.0.1:8080)
 - `-s`: 服务器地址 (必需)
 - `-k`: 加密密码 (必需)
 - `-t`: 连接超时秒数 (默认: 30)
 - `-l`: 日志级别 debug/info/warn/error (默认: info)
 - `-o`: 启用流量混淆
+- `-auto-proxy`: 自动配置系统代理 (默认: true)
 
 **配置文件示例** (`local.config.json`):
 ```json
 {
   "local_addr": "127.0.0.1:1080",
+  "http_proxy_addr": "127.0.0.1:8080",
   "server": "your-server.com:8081",
   "password": "your-strong-password",
   "timeout": 30,
   "log_level": "info",
-  "obfuscate": true
+  "obfuscate": true,
+  "auto_proxy": true
 }
 ```
 
 ### 3. 浏览器配置
 
-配置浏览器使用 SOCKS5 代理:
+#### 方式一：自动系统代理（推荐）
+
+客户端默认会自动配置系统代理（`auto_proxy: true`），启动后浏览器将自动使用代理。
+
+- **Windows**: 自动配置 Internet 选项中的代理设置
+- **Linux GNOME**: 使用 gsettings 自动配置系统代理
+- **Linux KDE**: 使用 kwriteconfig 自动配置系统代理
+- **其他 Linux 环境**: 需要手动配置浏览器或系统代理
+
+退出客户端时会自动恢复原有代理设置。
+
+#### 方式二：手动配置
+
+如果不想使用自动代理，可设置 `auto_proxy: false`，然后手动配置：
+
+**SOCKS5 代理**:
 - 代理地址: `127.0.0.1`
 - 端口: `1080`
 - 类型: SOCKS5
 
-或使用系统代理设置。
+**HTTP 代理**:
+- 代理地址: `127.0.0.1`
+- 端口: `8080`
+- 类型: HTTP
 
 ## 安全性
 
@@ -185,6 +223,39 @@ go mod tidy
 ./server -l debug
 ```
 
+### Linux 系统代理配置
+
+Linux 客户端会自动检测桌面环境并配置系统代理：
+
+**GNOME（使用 gsettings）**:
+- 自动检测 GNOME 环境
+- 使用 `gsettings` 命令配置代理
+- 支持 HTTP/HTTPS 代理设置
+- 自动配置本地地址排除列表
+
+**KDE Plasma（使用 kwriteconfig）**:
+- 自动检测 KDE 环境
+- 使用 `kwriteconfig5` 或 `kwriteconfig` 配置
+- 修改 `~/.config/kioslaverc` 文件
+- 通过 D-Bus 通知 KDE 重新加载配置
+
+**其他桌面环境**:
+- 如果无法自动配置，客户端会显示警告信息
+- 需要手动配置浏览器或系统代理
+- 客户端仍可正常工作，仅自动代理功能不可用
+
+**手动禁用自动代理**:
+```bash
+./local-linux -auto-proxy=false -c local.config.json
+```
+
+或在配置文件中设置:
+```json
+{
+  "auto_proxy": false
+}
+```
+
 ## 项目结构
 
 ```
@@ -195,8 +266,13 @@ go-proxy-eins/
 ├── internal/
 │   ├── cipher/         # ChaCha20-Poly1305 加密
 │   ├── config/         # 配置管理
+│   ├── httpproxy/      # HTTP 代理处理
 │   ├── logger/         # 日志系统
-│   └── protocol/       # 握手和混淆协议
+│   ├── protocol/       # 握手和混淆协议
+│   ├── socks5/         # SOCKS5 客户端
+│   └── sysproxy/       # 系统代理配置（跨平台）
+│       ├── windows.go  # Windows 实现
+│       └── linux.go    # Linux 实现
 ├── *.config.json       # 配置文件示例
 └── README.md
 ```
