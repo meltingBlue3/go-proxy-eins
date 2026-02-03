@@ -57,18 +57,20 @@ func main() {
 	startHTTPProxyListener(cfg)
 }
 
-// setupSystemProxy 设置 Windows 系统代理
+// setupSystemProxy 设置系统代理（支持 Windows 和 Linux）
 func setupSystemProxy(cfg *config.LocalConfig) error {
-	// 获取当前代理配置
+	// 尝试获取当前代理配置进行备份
 	current, err := sysproxy.GetCurrentProxy()
 	if err != nil {
-		return fmt.Errorf("failed to get current proxy: %w", err)
+		logger.Log.Warn("Failed to get current proxy settings, will disable proxy on exit", "error", err)
+		// 不返回错误，继续设置代理
+		// 退出时会尝试禁用代理作为兜底方案
+	} else {
+		originalProxyConfig = current
+		logger.Log.Info("Current proxy settings backed up", 
+			"enabled", current.Enabled, 
+			"server", current.Server)
 	}
-	originalProxyConfig = current
-
-	logger.Log.Info("Current proxy settings backed up", 
-		"enabled", current.Enabled, 
-		"server", current.Server)
 
 	// 设置新的 HTTP 代理
 	if err := sysproxy.SetHTTPProxy(cfg.HTTPProxyAddr); err != nil {
@@ -89,11 +91,31 @@ func setupSignalHandler(cfg *config.LocalConfig) {
 		logger.Log.Info("Received signal, shutting down...", "signal", sig)
 
 		// 恢复系统代理
-		if cfg.AutoProxy && originalProxyConfig != nil {
-			if err := sysproxy.RestoreProxy(originalProxyConfig); err != nil {
-				logger.Log.Error("Failed to restore proxy", "error", err)
-			} else {
-				logger.Log.Info("System proxy restored")
+		if cfg.AutoProxy {
+			restored := false
+			
+			// 尝试恢复原始代理配置
+			if originalProxyConfig != nil {
+				if err := sysproxy.RestoreProxy(originalProxyConfig); err != nil {
+					logger.Log.Error("Failed to restore original proxy", "error", err)
+				} else {
+					logger.Log.Info("System proxy restored to original settings")
+					restored = true
+				}
+			}
+			
+			// 如果恢复失败或没有备份，尝试直接禁用代理
+			if !restored {
+				logger.Log.Warn("Original proxy config not available, attempting to disable proxy...")
+				if err := sysproxy.DisableProxy(); err != nil {
+					logger.Log.Error("Failed to disable proxy automatically", "error", err)
+					logger.Log.Error("Please manually disable system proxy:")
+					logger.Log.Error("  GNOME: gsettings set org.gnome.system.proxy mode 'none'")
+					logger.Log.Error("  KDE: kwriteconfig5 --file kioslaverc --group 'Proxy Settings' --key ProxyType 0")
+					logger.Log.Error("  Or run: ./scripts/restore-proxy-linux.sh")
+				} else {
+					logger.Log.Info("System proxy disabled successfully")
+				}
 			}
 		}
 
